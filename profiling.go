@@ -47,7 +47,7 @@ func Mutex(w io.Writer) error {
 	return pprof.Lookup(pprofMutex).WriteTo(w, int(profiling.printMode))
 }
 
-// CPU you can check it using: go tool pprof <file>
+// CPU check it using: go tool pprof <file>
 func CPU(d time.Duration, w io.Writer) (err error) {
 	if err = pprof.StartCPUProfile(w); err != nil {
 		return err
@@ -60,7 +60,7 @@ func CPU(d time.Duration, w io.Writer) (err error) {
 	return nil
 }
 
-// Memory you can check it using: go tool pprof <file>
+// Memory check it using: go tool pprof <file>
 func Memory(w io.Writer) (err error) {
 	runtime.GC()
 	return pprof.WriteHeapProfile(w)
