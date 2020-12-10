@@ -18,7 +18,7 @@ A simple util to add profiling to your project.
 * Memory
 * GC
 
-> ##### Installation
+## Installation
 ###### Using make file
 ```
 make install
