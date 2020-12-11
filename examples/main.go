@@ -3,6 +3,8 @@ package main
 import (
 	"bytes"
 	"fmt"
+	"net/http"
+	"net/http/pprof"
 	"os"
 	"profiling"
 	"time"
@@ -88,4 +90,11 @@ func main() {
 
 	// Print w to stdout
 	fmt.Println(w.String())
+
+	// profiling over http using pprof
+	mux := http.NewServeMux()
+	mux.HandleFunc("/debug/profile", pprof.Profile)
+	if err = http.ListenAndServe(":7777", mux); err != nil {
+		panic(err)
+	}
 }
