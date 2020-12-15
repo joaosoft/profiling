@@ -14,8 +14,31 @@ const (
 	generatedFolder = "./generated"
 )
 
+var (
+	quit = make(chan bool)
+)
+
 func init() {
 	profiling.SetPrintMode(profiling.PrintModeNormal)
+	initProcesses(quit)
+}
+
+func initProcesses(quit chan bool) {
+	for i := 0; i < 10; i++ {
+		for true {
+			go func() {
+				select {
+				case <-quit:
+					fmt.Println("received shutdown signal")
+				}
+			}()
+		}
+	} // profiling over http using pprof
+	mux := http.NewServeMux()
+	mux.HandleFunc("/debug/profile", pprof.Profile)
+	mux.HandleFunc("/dummy", dummyHandler)
+	go http.ListenAndServe(":7777", mux)
+
 }
 
 func main() {
@@ -66,7 +89,7 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	if err = profiling.CPU(5*time.Second, file); err != nil {
+	if err = profiling.CPU(20*time.Second, file); err != nil {
 		panic(err)
 	}
 	fmt.Printf("Now you can use the command: go tool pprof %s\n", fileName)
@@ -91,10 +114,13 @@ func main() {
 	// Print w to stdout
 	fmt.Println(w.String())
 
-	// profiling over http using pprof
-	mux := http.NewServeMux()
-	mux.HandleFunc("/debug/profile", pprof.Profile)
-	if err = http.ListenAndServe(":7777", mux); err != nil {
-		panic(err)
-	}
+	fmt.Println("quit goroutines")
+	quit <- true
+}
+
+func dummyHandler(w http.ResponseWriter, req *http.Request) {
+	fmt.Printf("> executing dummy ")
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	w.Write([]byte(`{"success": true}`))
 }
