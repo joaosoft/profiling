@@ -14,6 +14,7 @@ A simple util to add profiling to your project.
 * Allocs
 * Block
 * Mutex
+* Symbol
 * CPU
 * Memory
 * GC

@@ -5,7 +5,9 @@ import (
 	"net/http"
 	"net/http/pprof"
 	"os"
+	"os/signal"
 	"profiling"
+	"syscall"
 	"time"
 )
 
@@ -14,34 +16,53 @@ const (
 )
 
 var (
-	quit = make(chan bool)
+	nGoRoutines = 50
 )
 
 func init() {
 	profiling.SetPrintMode(profiling.PrintModeNormal)
-	//initProcesses(quit)
 }
 
-func initProcesses(quit chan bool) {
-	for i := 0; i < 10; i++ {
-		for true {
-			go func() {
-				select {
-				case <-quit:
-					fmt.Println("received shutdown signal")
-				}
-			}()
-		}
+func startDummyProcesses() {
+	for i := 0; i < nGoRoutines; i++ {
+		go func() {
+			for true {
+				time.Sleep(time.Second)
+			}
+		}()
 	}
+}
 
-	// profiling over http using pprof
+func startWebServer(port int) {
 	mux := http.NewServeMux()
+	mux.HandleFunc("/debug/index", pprof.Index)
+	mux.HandleFunc("/debug/allocs", pprof.Handler("allocs").ServeHTTP)
+	mux.HandleFunc("/debug/block", pprof.Handler("block").ServeHTTP)
+	mux.HandleFunc("/debug/goroutine", pprof.Handler("goroutine").ServeHTTP)
+	mux.HandleFunc("/debug/heap", pprof.Handler("heap").ServeHTTP)
+	mux.HandleFunc("/debug/mutex", pprof.Handler("mutex").ServeHTTP)
+	mux.HandleFunc("/debug/threadcreate", pprof.Handler("threadcreate").ServeHTTP)
+	mux.HandleFunc("/debug/cmdline", pprof.Cmdline)
 	mux.HandleFunc("/debug/profile", pprof.Profile)
+	mux.HandleFunc("/debug/trace", pprof.Trace)
 	mux.HandleFunc("/dummy", dummyHandler)
-	go http.ListenAndServe(":7777", mux)
+
+	fmt.Printf("started web server at http://localhost:%d/debug/index\n", port)
+	go http.ListenAndServe(fmt.Sprintf(":%d", port), mux)
 }
 
 func main() {
+	startDummyProcesses()
+	startWebServer(7777)
+	startProfileTools()
+
+	termChan := make(chan os.Signal, 1)
+	signal.Notify(termChan, syscall.SIGINT, syscall.SIGTERM, syscall.SIGUSR1)
+	fmt.Println("waiting for term command")
+	<-termChan
+}
+
+func startProfileTools() {
 	var err error
 	var file *os.File
 	var fileName string
@@ -181,8 +202,7 @@ func main() {
 		panic(err)
 	}
 
-	fmt.Println("quit goroutines")
-	quit <- true
+	fmt.Println("done")
 }
 
 func dummyHandler(w http.ResponseWriter, req *http.Request) {
