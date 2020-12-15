@@ -6,6 +6,8 @@ import (
 	"runtime"
 	"runtime/debug"
 	"runtime/pprof"
+	"runtime/trace"
+	"strconv"
 	"time"
 )
 
@@ -60,7 +62,7 @@ func CPU(d time.Duration, w io.Writer) (err error) {
 	return nil
 }
 
-// Memory check it using: go tool pprof <file>
+// Memory prints memory information
 func Memory(w io.Writer) (err error) {
 	runtime.GC()
 	return pprof.WriteHeapProfile(w)
@@ -75,6 +77,34 @@ func GC(w io.Writer) error {
 	debug.ReadGCStats(gcStats)
 
 	printGC(startTime, memStats, gcStats, w)
+
+	return nil
+}
+
+// Trace prints a program trace
+func Trace(d time.Duration, w io.Writer) error {
+	if err := trace.Start(w); err != nil {
+		return err
+	}
+
+	time.Sleep(d)
+
+	runtime.StopTrace()
+
+	return nil
+}
+
+// Symbol prints functions information
+func Symbol(words []string, w io.Writer) error {
+	for _, word := range words {
+		pc, _ := strconv.ParseUint(word, 0, 64)
+		if pc != 0 {
+			f := runtime.FuncForPC(uintptr(pc))
+			if f != nil {
+				fmt.Fprintf(w, "%#x %s\n", pc, f.Name())
+			}
+		}
+	}
 
 	return nil
 }

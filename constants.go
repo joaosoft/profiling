@@ -8,8 +8,8 @@ const (
 const (
 	pprofGoRoutine    = "goroutine"
 	pprofThreadCreate = "threadcreate"
-	pprofHeap         = "allocs"
-	pprofAllocs       = "heap"
+	pprofHeap         = "heap"
+	pprofAllocs       = "allocs"
 	pprofBlock        = "block"
 	pprofMutex        = "mutex"
 )
