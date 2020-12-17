@@ -40,12 +40,16 @@ func Allocs(w io.Writer) error {
 }
 
 // Block prints block information
-func Block(w io.Writer) error {
+func Block(rate int, w io.Writer) error {
+	defer runtime.SetBlockProfileRate(0)
+	runtime.SetBlockProfileRate(rate)
 	return pprof.Lookup(pprofBlock).WriteTo(w, int(profiling.printMode))
 }
 
 // Mutex prints mutex information
-func Mutex(w io.Writer) error {
+func Mutex(rate int, w io.Writer) error {
+	defer runtime.SetMutexProfileFraction(0)
+	runtime.SetMutexProfileFraction(rate)
 	return pprof.Lookup(pprofMutex).WriteTo(w, int(profiling.printMode))
 }
 

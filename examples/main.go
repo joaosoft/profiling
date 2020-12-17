@@ -1,10 +1,12 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"net/http/pprof"
 	"os"
+	"os/exec"
 	"os/signal"
 	"profiling"
 	"syscall"
@@ -12,29 +14,34 @@ import (
 )
 
 const (
-	generatedFolder = "./generated"
-)
-
-var (
-	nGoRoutines = 50
+	generatedFolder   = "./generated"
+	httpWebServerPort = 7777
+	numGoRoutines     = 50
 )
 
 func init() {
 	profiling.SetPrintMode(profiling.PrintModeNormal)
 }
 
-func startDummyProcesses() {
-	for i := 0; i < nGoRoutines; i++ {
-		go func() {
-			for true {
-				time.Sleep(time.Second)
-			}
-		}()
-	}
+func main() {
+	startWebServer(httpWebServerPort)
+	stopChan := make(chan bool)
+	startDummyProcesses(stopChan)
+	startProfileTools()
+
+	close(stopChan) // tell it to stop
+	<-stopChan      // wait for it to have stopped
+
+	termChan := make(chan os.Signal, 1)
+	signal.Notify(termChan, syscall.SIGINT, syscall.SIGTERM, syscall.SIGUSR1)
+	fmt.Println("waiting for term command")
+	<-termChan
 }
 
 func startWebServer(port int) {
 	mux := http.NewServeMux()
+
+	// pprof routes
 	mux.HandleFunc("/debug/index", pprof.Index)
 	mux.HandleFunc("/debug/allocs", pprof.Handler("allocs").ServeHTTP)
 	mux.HandleFunc("/debug/block", pprof.Handler("block").ServeHTTP)
@@ -45,21 +52,53 @@ func startWebServer(port int) {
 	mux.HandleFunc("/debug/cmdline", pprof.Cmdline)
 	mux.HandleFunc("/debug/profile", pprof.Profile)
 	mux.HandleFunc("/debug/trace", pprof.Trace)
+
+	// dummy route
 	mux.HandleFunc("/dummy", dummyHandler)
 
-	fmt.Printf("started web server at http://localhost:%d/debug/index\n", port)
+	fmt.Printf("web server started at http://localhost:%d/debug/index\n", port)
 	go http.ListenAndServe(fmt.Sprintf(":%d", port), mux)
 }
 
-func main() {
-	startDummyProcesses()
-	startWebServer(7777)
-	startProfileTools()
+func dummyHandler(w http.ResponseWriter, req *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
 
-	termChan := make(chan os.Signal, 1)
-	signal.Notify(termChan, syscall.SIGINT, syscall.SIGTERM, syscall.SIGUSR1)
-	fmt.Println("waiting for term command")
-	<-termChan
+	var data []int
+	for i := 0; i < 100000; i++ {
+		if i%1000 == 0 {
+			data = append(data, i)
+		}
+	}
+
+	bytes, err := json.Marshal(data)
+	if err != nil {
+		w.Write([]byte(err.Error()))
+		return
+	}
+
+	w.Write(bytes)
+}
+
+func startDummyProcesses(stopChan chan bool) {
+	for i := 0; i <= numGoRoutines; i++ {
+		go func(id int) {
+			for true {
+				select {
+				default:
+					_, err := http.Get(fmt.Sprintf("http://localhost:%d/dummy", httpWebServerPort))
+					if err != nil {
+						panic(err)
+					}
+					time.Sleep(time.Second)
+				case <-stopChan:
+					fmt.Printf("\nstopping go routine %d", id)
+					// stop
+					return
+				}
+			}
+		}(i)
+	}
 }
 
 func startProfileTools() {
@@ -123,7 +162,7 @@ func startProfileTools() {
 		panic(err)
 	}
 	defer file.Close()
-	if err = profiling.Block(file); err != nil {
+	if err = profiling.Block(100, file); err != nil {
 		panic(err)
 	}
 
@@ -135,7 +174,7 @@ func startProfileTools() {
 		panic(err)
 	}
 	defer file.Close()
-	if err = profiling.Mutex(file); err != nil {
+	if err = profiling.Mutex(100, file); err != nil {
 		panic(err)
 	}
 
@@ -147,7 +186,7 @@ func startProfileTools() {
 		panic(err)
 	}
 	defer file.Close()
-	if err = profiling.Trace(20*time.Second, file); err != nil {
+	if err = profiling.Trace(30*time.Second, file); err != nil {
 		panic(err)
 	}
 	fmt.Printf("Now you can use the command: go tool trace %s\n", fileName)
@@ -172,10 +211,14 @@ func startProfileTools() {
 		panic(err)
 	}
 	defer file.Close()
-	if err = profiling.CPU(20*time.Second, file); err != nil {
+	if err = profiling.CPU(30*time.Second, file); err != nil {
 		panic(err)
 	}
 	fmt.Printf("Now you can use the command: go tool pprof %s\n", fileName)
+
+	// show on prof UI
+	fmt.Println("showing on pprof UI")
+	showPprofUI(fileName)
 
 	// Memory
 	fmt.Println(":: Executing: Memory")
@@ -189,6 +232,10 @@ func startProfileTools() {
 		panic(err)
 	}
 	fmt.Printf("Now you can use the command: go tool pprof %s\n", fileName)
+
+	// show on prof UI
+	fmt.Println("showing on pprof UI")
+	showPprofUI(fileName)
 
 	// GC
 	fmt.Println(":: Executing: GC")
@@ -205,9 +252,10 @@ func startProfileTools() {
 	fmt.Println("done")
 }
 
-func dummyHandler(w http.ResponseWriter, req *http.Request) {
-	fmt.Printf("> executing dummy")
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	w.Write([]byte(`{"success": true}`))
+func showPprofUI(fileName string) {
+	cmd := exec.Command("go", "tool", "pprof", "-http=:", fileName)
+
+	if err := cmd.Start(); err != nil {
+		panic(fmt.Sprintf("cannot start pprof UI: %v", err))
+	}
 }
