@@ -1,11 +1,11 @@
-package handlers
+package web
 
 import (
 	"fmt"
 	"net/http"
 )
 
-func IndexHandler(w http.ResponseWriter, req *http.Request) {
+func indexHandler(w http.ResponseWriter, req *http.Request) {
 	w.Header().Set("Content-Type", "text/html")
 	w.WriteHeader(http.StatusOK)
 	w.Write([]byte(fmt.Sprintf(`
@@ -57,5 +57,5 @@ td {
 	</div>
 </body>
 </html>
-`, HttpWebServerPort, HttpWebServerPort)))
+`, httpWebServerPort, httpWebServerPort)))
 }

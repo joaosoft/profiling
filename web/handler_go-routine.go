@@ -1,11 +1,11 @@
-package handlers
+package web
 
 import (
 	"encoding/json"
 	"net/http"
 )
 
-func GoRoutineHandler(w http.ResponseWriter, req *http.Request) {
+func goRoutineHandler(w http.ResponseWriter, req *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 

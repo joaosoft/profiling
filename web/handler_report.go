@@ -1,4 +1,4 @@
-package handlers
+package web
 
 import (
 	"fmt"
@@ -9,12 +9,12 @@ import (
 	"time"
 )
 
-func ReportHandler(w http.ResponseWriter, req *http.Request) {
+func reportHandler(w http.ResponseWriter, req *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 
 	stopChan := make(chan bool)
-	startDummyProcesses(HttpWebServerPort, numGoRoutines, stopChan)
+	startDummyProcesses(httpWebServerPort, numGoRoutines, stopChan)
 	startProfileTools(outputFolder)
 
 	close(stopChan) // tell it to stop

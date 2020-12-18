@@ -1,15 +1,14 @@
-package routes
+package web
 
 import (
 	"net/http"
 	"net/http/pprof"
-	"profiling/web/handlers"
 )
 
-func RegisterRoutes(mux *http.ServeMux) {
-	mux.HandleFunc("/", handlers.IndexHandler)
-	mux.HandleFunc("/report", handlers.ReportHandler)
-	mux.HandleFunc("/go-routine", handlers.GoRoutineHandler)
+func registerRoutes(mux *http.ServeMux) {
+	mux.HandleFunc("/", indexHandler)
+	mux.HandleFunc("/report", reportHandler)
+	mux.HandleFunc("/go-routine", goRoutineHandler)
 
 	// pprof routes
 	mux.HandleFunc("/debug/index", pprof.Index)

@@ -5,7 +5,6 @@ import (
 	"log"
 	"net/http"
 	"os/exec"
-	"profiling/web/routes"
 	"runtime"
 )
 
@@ -14,16 +13,16 @@ func init() {
 }
 
 func Start() {
-	routes.RegisterRoutes(mux)
+	registerRoutes(mux)
 
-	url := fmt.Sprintf("http://localhost:%d", HttpWebServerPort)
+	url := fmt.Sprintf("http://localhost:%d", httpWebServerPort)
 	fmt.Printf("web server started at %s\n", url)
 
 	if err := showUrl(url); err != nil {
 		log.Println(fmt.Sprintf("cannot start browser: %v", err))
 	}
 
-	http.ListenAndServe(fmt.Sprintf(":%d", HttpWebServerPort), mux)
+	http.ListenAndServe(fmt.Sprintf(":%d", httpWebServerPort), mux)
 }
 
 func showUrl(url string) error {
