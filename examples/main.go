@@ -1,8 +1,8 @@
 package main
 
 import (
-	"profiling"
-	"profiling/web"
+	"github.com/joaosoft/profiling"
+	"github.com/joaosoft/profiling/web"
 )
 
 func init() {
