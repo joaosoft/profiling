@@ -2,10 +2,10 @@ package web
 
 import (
 	"fmt"
+	"github.com/joaosoft/profiling"
 	"net/http"
 	"os"
 	"os/exec"
-	"profiling"
 	"time"
 )
 
